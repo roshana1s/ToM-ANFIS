@@ -2,13 +2,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-# from app.core.loader import loader
-# from app.routes.predict import router
+from app.core.loader import loader
+from app.routes.predict import router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # loader.load()
+    loader.load()
     yield
 
 
@@ -23,7 +23,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# app.include_router(router, prefix="/predict", tags=["Prediction"])
+app.include_router(router, prefix="/predict", tags=["Prediction"])
 
 
 if __name__ == "__main__":
