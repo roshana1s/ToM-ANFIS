@@ -11,7 +11,7 @@ import numpy as np
 
 from app.config import settings
 from app.core.loader import loader
-from app.schemas.input import ToMFeaturesInput
+from app.schemas.processed_features import ToMFeaturesInput
 from app.schemas.output import FiredRule, PredictionResponse
 
 import torch
@@ -40,9 +40,16 @@ def predict(features: ToMFeaturesInput) -> PredictionResponse:
     scaler = loader.get_scaler()
     device = next(model.parameters()).device
 
-    # 1. Build ordered numpy array
+    # 1. Flatten nested features
+    flat_data = {}
+    flat_data.update(features.belief_state.model_dump())
+    flat_data.update(features.goal_state.model_dump())
+    flat_data.update(features.attention_state.model_dump())
+    flat_data.update(features.context_environment.model_dump())
+
+    # 2. Build ordered numpy array
     raw = np.array(
-        [getattr(features, name) for name in _FEATURE_ORDER], dtype=np.float32
+        [flat_data[name] for name in _FEATURE_ORDER], dtype=np.float32
     ).reshape(1, -1)
 
     # 2. Scale (MinMaxScaler fitted during training)

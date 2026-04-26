@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 import logging
 
-from app.schemas.input import RawAnnotationInput, ToMFeaturesInput
+from app.schemas.raw_data import RawAnnotationInput
+from app.schemas.processed_features import ToMFeaturesInput
 from app.schemas.output import PredictionResponse
 from app.services.feature_extraction_service import extract_features
 from app.services.prediction_service import predict
@@ -19,7 +20,12 @@ def predict_from_annotations(payload: RawAnnotationInput) -> PredictionResponse:
     """
     try:
         features_dict = extract_features(payload)
-        features = ToMFeaturesInput(**features_dict)
+        features = ToMFeaturesInput(
+            belief_state=features_dict,
+            goal_state=features_dict,
+            attention_state=features_dict,
+            context_environment=features_dict
+        )
         return predict(features)
     except Exception as e:
         logger.error(f"Error in predict_from_annotations: {str(e)}", exc_info=True)

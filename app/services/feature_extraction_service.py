@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from app.core.extractor import ToMFeatureExtractor
-from app.schemas.input import RawAnnotationInput, TrafficObject
+from app.schemas.raw_data import RawAnnotationInput, TrafficObject
 
 _extractor = ToMFeatureExtractor()
 
@@ -28,7 +28,7 @@ def extract_features(payload: RawAnnotationInput) -> Dict[str, float]:
     return _extractor.extract_for_pedestrian(ped)
 
 
-# ── Private builder ───────────────────────────────────────────────────────────
+# ── Private builder 
 
 def _build_ped_dict(payload: RawAnnotationInput) -> dict:
     """
@@ -37,39 +37,39 @@ def _build_ped_dict(payload: RawAnnotationInput) -> dict:
     """
     frame_ids = payload.frames
 
-    # ── OBD speed per frame ──────────────────────────────────────────────────
+    # ── OBD speed per frame 
     obd_speed: List[float] = [
-        payload.obd_speed.get(fid, 0.0) for fid in frame_ids
+        payload.vehicle.obd_speed.get(fid, 0.0) for fid in frame_ids
     ]
 
-    # ── Crosswalk bboxes per frame ───────────────────────────────────────────
+    # ── Crosswalk bboxes per frame 
     crosswalk_objects = [
-        obj for obj in payload.traffic_objects if obj.obj_class == "crosswalk"
+        obj for obj in payload.environment.traffic_objects if obj.obj_class == "crosswalk"
     ]
     crosswalk_bboxes: List[List[List[float]]] = _per_frame_bboxes(
         frame_ids, crosswalk_objects
     )
 
-    # ── Vehicle count per frame ──────────────────────────────────────────────
+    # ── Vehicle count per frame 
     vehicle_objects = [
-        obj for obj in payload.traffic_objects if obj.obj_class == "vehicle"
+        obj for obj in payload.environment.traffic_objects if obj.obj_class == "vehicle"
     ]
     vehicle_counts: List[int] = _per_frame_counts(frame_ids, vehicle_objects)
 
-    # ── Traffic-light signals ────────────────────────────────────────────────
+    # ── Traffic-light signals 
     tl_objects = [
-        obj for obj in payload.traffic_objects if obj.obj_class == "traffic_light"
+        obj for obj in payload.environment.traffic_objects if obj.obj_class == "traffic_light"
     ]
     traffic_lights: List[dict] = _traffic_light_summary(frame_ids, tl_objects)
 
     return {
-        "age": payload.age,
-        "intersection": payload.intersection,
-        "bbox": payload.bbox,
-        "occlusion": payload.occlusion,
-        "action": payload.behavior.action,
-        "gesture": payload.behavior.gesture,
-        "look": payload.behavior.look,
+        "age": payload.pedestrian.age,
+        "intersection": payload.environment.intersection,
+        "bbox": payload.pedestrian.bbox,
+        "occlusion": payload.pedestrian.occlusion,
+        "action": payload.pedestrian.behavior.action,
+        "gesture": payload.pedestrian.behavior.gesture,
+        "look": payload.pedestrian.behavior.look,
         "obd_speed": obd_speed,
         "crosswalk_bboxes": crosswalk_bboxes,
         "vehicle_counts": vehicle_counts,
