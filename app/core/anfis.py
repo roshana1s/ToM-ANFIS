@@ -71,48 +71,45 @@ class ANFIS(nn.Module):
             f"x{i}" for i in range(in_features)
         ]
 
-        # L1: Gaussian MF sub-module (keys: mf_layer.centers / mf_layer.sigmas)
+        # L1: Gaussian MF sub-module
         self.mf_layer = GaussianMF(in_features, num_mfs)
 
-        # L4: TSK consequents (key: consequent_weights)
+        # L4: TSK consequents 
         self.consequent_weights = nn.Parameter(
             torch.zeros(self.num_rules, in_features + 1)
         )
 
-        # Precomputed rule → MF-index mapping (buffer, not a learnable param)
+        # Precomputed rule → MF-index mapping 
         combos = list(itertools.product(range(num_mfs), repeat=in_features))
         self.register_buffer(
             "rule_mf_indices",
-            torch.tensor(combos, dtype=torch.long),
+            torch.tensor(combos, dtype=torch.long)
         )
 
         n_params = sum(p.numel() for p in self.parameters())
         print(f"ANFIS initialised  |  Rules: {self.num_rules:,}  |  Params: {n_params:,}")
 
-    # ── Internal layers ───────────────────────────────────────────────────────
-
+    # ── Internal layers 
     def _fire_rules(self, mu: torch.Tensor) -> torch.Tensor:
         """Product T-norm: (B,F,M) → (B, num_rules)."""
         B, R, F = mu.shape[0], self.num_rules, self.in_features
-        idx = self.rule_mf_indices.unsqueeze(0).expand(B, R, F)          # (B,R,F)
+        idx = self.rule_mf_indices.unsqueeze(0).expand(B, R, F)          
         gathered = mu.unsqueeze(1).expand(B, R, F, self.num_mfs).gather(
             dim=3, index=idx.unsqueeze(-1)
-        ).squeeze(-1)                                                      # (B,R,F)
-        return gathered.prod(dim=2)                                        # (B,R)
+        ).squeeze(-1)                                                      
+        return gathered.prod(dim=2)                                        
 
-    # ── Forward ───────────────────────────────────────────────────────────────
-
+    # ── Forward 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: (B, in_features) → ŷ: (B,)"""
-        mu = self.mf_layer(x)                                              # (B,F,M)
-        w = self._fire_rules(mu)                                           # (B,R)
-        w_bar = w / (w.sum(dim=1, keepdim=True) + 1e-10)                  # (B,R)
+        mu = self.mf_layer(x)                                             
+        w = self._fire_rules(mu)                                           
+        w_bar = w / (w.sum(dim=1, keepdim=True) + 1e-10)                 
         x_aug = torch.cat([torch.ones(x.shape[0], 1, device=x.device), x], dim=1)
         f_k = (x_aug.unsqueeze(1) * self.consequent_weights.unsqueeze(0)).sum(dim=2)
         return torch.sigmoid((w_bar * f_k).sum(dim=1))
 
-    # ── Explainability ────────────────────────────────────────────────────────
-
+    # ── Explainability 
     @torch.no_grad()
     def predict_explain(
         self,
@@ -149,8 +146,8 @@ class ANFIS(nn.Module):
 
         y_hat = float(torch.sigmoid((w_bar * f_k).sum(dim=1)).item())
 
-        w_flat = w_bar.squeeze(0)   # (R,)
-        f_flat = f_k.squeeze(0)     # (R,)
+        w_flat = w_bar.squeeze(0)   
+        f_flat = f_k.squeeze(0)     
 
         # Filter by threshold then keep top-k
         mask = w_flat >= threshold

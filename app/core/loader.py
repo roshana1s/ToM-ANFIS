@@ -75,7 +75,7 @@ class ModelLoader:
             )
         return self._scaler
 
-    # ── Private helpers ──
+
 
     def _load_scaler(self) -> None:
         path: Path = settings.SCALER_PATH

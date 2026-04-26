@@ -36,8 +36,6 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 
-# ── Lookup tables ─────────────────────────────────────────────────────────────
-
 _AGE_VULNERABILITY: Dict[int, float] = {
     0: 0.8,  # child
     1: 0.3,  # young
@@ -113,7 +111,7 @@ class ToMFeatureExtractor:
             "C2_occlusion_factor":              self._C2(ped.get("occlusion", [])),
         }
 
-    # ── Feature helpers ───────────────────────────────────────────────────────
+    # ── Feature helpers 
 
     @staticmethod
     def _B1(age: int) -> float:
