@@ -1,10 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+import logging
 
 from app.schemas.input import RawAnnotationInput, ToMFeaturesInput
 from app.schemas.output import PredictionResponse
 from app.services.feature_extraction_service import extract_features
 from app.services.prediction_service import predict
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -15,9 +17,13 @@ def predict_from_annotations(payload: RawAnnotationInput) -> PredictionResponse:
 
     Flow: RawAnnotationInput → feature_extraction_service → prediction_service
     """
-    features_dict = extract_features(payload)
-    features = ToMFeaturesInput(**features_dict)
-    return predict(features)
+    try:
+        features_dict = extract_features(payload)
+        features = ToMFeaturesInput(**features_dict)
+        return predict(features)
+    except Exception as e:
+        logger.error(f"Error in predict_from_annotations: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/from-features", response_model=PredictionResponse)
@@ -27,4 +33,8 @@ def predict_from_features(payload: ToMFeaturesInput) -> PredictionResponse:
 
     Flow: ToMFeaturesInput → prediction_service (no extraction needed)
     """
-    return predict(payload)
+    try:
+        return predict(payload)
+    except Exception as e:
+        logger.error(f"Error in predict_from_features: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
