@@ -31,7 +31,7 @@ class ModelLoader:
             self._model.load_state_dict(checkpoint['model_state_dict'])
             self._model.eval()  # Set to evaluation mode
 
-            print(f"✓ Model loaded from {settings.MODEL_PATH}")
+            print(f"Model loaded from {settings.MODEL_PATH}")
 
         except FileNotFoundError:
             raise RuntimeError(
@@ -46,7 +46,7 @@ class ModelLoader:
         try:
             # Load the MinMaxScaler used during training
             self._scaler = joblib.load(settings.SCALER_PATH)
-            print(f"✓ Scaler loaded from {settings.SCALER_PATH}")
+            print(f"Scaler loaded from {settings.SCALER_PATH}")
 
         except FileNotFoundError:
             raise RuntimeError(

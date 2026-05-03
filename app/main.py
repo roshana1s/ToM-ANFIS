@@ -1,7 +1,5 @@
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 
 from app.core.loader import loader
 from app.routes.predict import router
@@ -13,20 +11,19 @@ async def lifespan(app: FastAPI):
     FastAPI lifespan context manager.
     Loads the ANFIS model and scaler at startup.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("ToM-ANFIS API Startup")
-    print("="*70)
-    
+    print("=" * 70)
+
     try:
         loader.load()
-        print("="*70 + "\n")
-        print("✓ Model loader initialised — API ready to serve")
-        print("✓ Visit http://localhost:8000/docs for API documentation\n")
+        print("=" * 70 + "\n")
+        print("Model loader initialised — API ready to serve")
     except Exception as e:
-        print(f"\n✗ STARTUP FAILED: {str(e)}\n")
-        print("="*70)
+        print(f"\nSTARTUP FAILED: {str(e)}\n")
+        print("=" * 70)
         raise
-    
+
     yield
 
 
@@ -50,15 +47,12 @@ async def root():
     return {
         "service": "ToM-ANFIS Pedestrian Crossing Intention API",
         "version": "1.0.0",
-        "docs": "http://localhost:8000/docs"
     }
-
 
 @app.get("/health", tags=["Health"])
 async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
-
 
 if __name__ == "__main__":
     import uvicorn

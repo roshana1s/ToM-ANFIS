@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict
 import numpy as np
 import pandas as pd
 
@@ -273,7 +273,7 @@ class ToMFeatureExtractor:
                         all_rows.append(row)
                         ok += 1
                         if ok % 200 == 0:
-                            print(f'  ✓ {ok}/{total} processed...')
+                            print(f'  {ok}/{total} processed...')
 
         if not all_rows:
             print('No features extracted — verify database structure.')
