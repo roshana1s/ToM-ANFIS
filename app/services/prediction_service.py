@@ -19,44 +19,49 @@ def predict(features: ToMFeaturesInput) -> PredictionResponse:
     """
 
     # Extract feature vector in the expected order
-    feature_vector = np.array([
-        features.B1_age_vulnerability_awareness,
-        features.B2_intersection_complexity,
-        features.B3_pedestrian_position_proximity,
-        features.B4_vehicle_density,
-        features.G2_urgency_rushing,
-        features.A1_vehicle_awareness,
-        features.A2_traffic_signal_awareness,
-        features.C1_relative_vehicle_speed,
-        features.C2_occlusion_factor,
-    ]).reshape(1, -1)
+    feature_vector = np.array(
+        [
+            features.B1_age_vulnerability_awareness,
+            features.B2_intersection_complexity,
+            features.B3_pedestrian_position_proximity,
+            features.B4_vehicle_density,
+            features.G2_urgency_rushing,
+            features.A1_vehicle_awareness,
+            features.A2_traffic_signal_awareness,
+            features.C1_relative_vehicle_speed,
+            features.C2_occlusion_factor,
+        ]
+    ).reshape(1, -1)
 
     # Get model and scaler from loader
     model = loader.get_model()
     scaler = loader.get_scaler()
 
-    # Apply MinMaxScaler normalisation
+    # Apply MinMaxScaler normalisation (results shape: (1, 9))
     x_scaled = scaler.transform(feature_vector)
 
-    # Convert to torch tensor and run inference with explanation
-    x_tensor = torch.FloatTensor(x_scaled)
-    result = model.predict_explain(x_tensor, threshold=settings.RULE_FIRING_THRESHOLD)
+    # Flatten to a 1-D numpy array (length == in_features) before calling
+    # `predict_explain`, which expects a single sample array, not a batch.
+    x_sample = x_scaled.flatten()
+
+    # Run inference with explanation (accepts numpy 1-D sample)
+    result = model.predict_explain(x_sample, threshold=settings.RULE_FIRING_THRESHOLD)
 
     # Extract results
-    probability = result['probability']
-    intention_level = result['intention_level']
-    fired_rules = result['fired_rules']
+    probability = result["probability"]
+    intention_level = result["intention_level"]
+    fired_rules = result["fired_rules"]
 
     # Sort by firing strength and take top-k
-    top_rules = fired_rules[:settings.TOP_K_RULES]
+    top_rules = fired_rules[: settings.TOP_K_RULES]
 
     # Convert to FiredRule schema objects
     fired_rule_objects = [
         FiredRule(
-            rule_id=rule['rule_id'],
-            firing_strength=rule['firing_strength'],
-            rule=rule['rule'],
-            consequent_linguistic=rule['consequent_linguistic'],
+            rule_id=rule["rule_id"],
+            firing_strength=rule["firing_strength"],
+            rule=rule["rule"],
+            consequent_linguistic=rule["consequent_linguistic"],
         )
         for rule in top_rules
     ]

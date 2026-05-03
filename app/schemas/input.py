@@ -1,14 +1,15 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 
-
 # ── Raw Annotation Input Schemas ──────────────────────────────────────
+
 
 class TrafficObject(BaseModel):
     """
     Represents a single traffic object (vehicle, crosswalk, traffic light)
     annotated in the PIE dataset.
     """
+
     obj_class: str
     """
     Type of traffic object: 'vehicle', 'crosswalk', 'traffic_light'
@@ -44,6 +45,7 @@ class BehaviorAnnotation(BaseModel):
     """
     Represents the pedestrian's behaviour annotations per frame.
     """
+
     action: List[int]
     """
     Action per frame:
@@ -74,6 +76,7 @@ class RawAnnotationInput(BaseModel):
     Raw pedestrian annotations from the PIE dataset.
     Contains complete multimodal observations for feature extraction.
     """
+
     age: int
     """
     Pedestrian age category:
@@ -127,15 +130,32 @@ class RawAnnotationInput(BaseModel):
     Mapping from frame_id → speed.
     """
 
+    # Optional runtime inference controls
+    prediction_horizon: Optional[int] = None
+    """
+    Frames before the crossing event to predict for. If omitted, the
+    service will use the configured default (see app.config). Semantics:
+      - `0` means the prediction frame is the last frame in `frames` (predict now).
+      - `30` means predict the state 30 frames before the crossing event (matches training).
+    """
+
+    observation_window: Optional[int] = None
+    """
+    Number of frames to aggregate temporal features over. If omitted,
+    the service will use the configured default (`OBSERVATION_WINDOW`) to
+    ensure runtime matches training (typically 15).
+    """
+
 
 # ── Direct ToM Features Input ─────────────────────────────────────────
+
 
 class ToMFeaturesInput(BaseModel):
     """
     Pre-extracted 9-dimensional Theory of Mind feature vector.
     Each feature is normalised to [0, 1] (or [-1, 1] for A2).
 
-    This schema is used by the /predict/from-features endpoint,
+    This schema is used by the /predict/from-tom-features endpoint,
     allowing clients to skip feature extraction and provide features directly.
     """
 
@@ -143,61 +163,49 @@ class ToMFeaturesInput(BaseModel):
         ...,
         ge=0.0,
         le=1.0,
-        description="Belief: Age-based vulnerability awareness ∈ [0, 1]"
+        description="Belief: Age-based vulnerability awareness ∈ [0, 1]",
     )
 
     B2_intersection_complexity: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Belief: Intersection complexity ∈ [0, 1]"
+        ..., ge=0.0, le=1.0, description="Belief: Intersection complexity ∈ [0, 1]"
     )
 
     B3_pedestrian_position_proximity: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Belief: Pedestrian proximity to crosswalk ∈ [0, 1]"
+        description="Belief: Pedestrian proximity to crosswalk ∈ [0, 1]",
     )
 
     B4_vehicle_density: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Belief: Density of vehicles in scene ∈ [0, 1]"
+        ..., ge=0.0, le=1.0, description="Belief: Density of vehicles in scene ∈ [0, 1]"
     )
 
     G2_urgency_rushing: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Goal: Urgency / rushing behaviour ∈ [0, 1]"
+        ..., ge=0.0, le=1.0, description="Goal: Urgency / rushing behaviour ∈ [0, 1]"
     )
 
     A1_vehicle_awareness: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Attention: Awareness of vehicles ∈ [0, 1]"
+        ..., ge=0.0, le=1.0, description="Attention: Awareness of vehicles ∈ [0, 1]"
     )
 
     A2_traffic_signal_awareness: float = Field(
         ...,
         ge=-1.0,
         le=1.0,
-        description="Attention: Awareness of traffic signals ∈ [-1, 1]"
+        description="Attention: Awareness of traffic signals ∈ [-1, 1]",
     )
 
     C1_relative_vehicle_speed: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Context: Relative speed of approaching vehicle ∈ [0, 1]"
+        description="Context: Relative speed of approaching vehicle ∈ [0, 1]",
     )
 
     C2_occlusion_factor: float = Field(
         ...,
         ge=0.0,
         le=1.0,
-        description="Context: Occlusion / visibility factor ∈ [0, 1]"
+        description="Context: Occlusion / visibility factor ∈ [0, 1]",
     )
