@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import itertools
 
@@ -71,3 +72,100 @@ class ANFIS(nn.Module):
         total = sum(p.numel() for p in self.parameters())
         print(f'ANFIS initialised  |  Rules: {self.num_rules:,}  |  Params: {total:,}')
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B = x.shape[0]
+        device = x.device
+        rules = self.rule_indices.to(device)          # (K, F)
+
+        # L1 — Fuzzification
+        mu = self.mf_layer(x)                          # (B, F, M)
+
+        # L2 — Rule firing: product T-norm over all features
+        w = torch.ones(B, self.num_rules, device=device)
+        for i in range(self.in_features):
+            w *= mu[:, i, :][:, rules[:, i]]           # broadcast MF selection
+
+        # L3 — Normalisation
+        w_bar = w / (w.sum(dim=1, keepdim=True) + 1e-10)
+
+        # L4 — TSK consequents (linear per rule)
+        x_aug = torch.cat([x, torch.ones(B, 1, device=device)], dim=1)  # (B, F+1)
+        f_k = torch.matmul(x_aug, self.consequent_weights.T)           # (B, K)
+
+        # L5 — Defuzzification + sigmoid
+        return torch.sigmoid((w_bar * f_k).sum(dim=1, keepdim=True))    # (B, 1)
+
+    # ── Explainability methods ────────────────────────────────────────────
+    def global_rules(self, top_k: int = 10):
+        """
+        Rank all rules by their average |consequent weight| (a proxy for importance)
+        and return the top-k as human-readable IF-THEN strings with TSK bodies.
+        """
+        importance  = self.consequent_weights.abs().mean(dim=1)          # (K,)
+        top_idx = importance.argsort(descending=True)[:top_k]
+        rules = []
+        fn = self.mf_layer.feature_names
+        mn = self.mf_layer.mf_names
+        for idx in top_idx:
+            r = idx.item()
+            ante = ' AND '.join(f'{fn[i]} is {mn[self.rule_indices[r,i].item()]}'
+                                 for i in range(self.in_features))
+            w = self.consequent_weights[r].detach().cpu().numpy()
+            body = f'{w[0]:.3f}' + ''.join(f' + {w[i+1]:.3f}·{fn[i]}'
+                                             for i in range(self.in_features))
+            rules.append((importance[idx].item(),
+                          f'IF {ante}\n   THEN intention = {body}'))
+        return rules
+
+    def predict_explain(self, x_sample: np.ndarray, threshold: float = 0.0001):
+        """
+        Run inference on a single normalised sample and return the prediction
+        together with all fired fuzzy rules as natural-language IF-THEN strings.
+
+        Args:
+            x_sample  : 1-D numpy array, length == in_features, already scaled
+            threshold : Minimum normalised firing strength to include a rule
+
+        Returns:
+            dict:
+                'probability'   : float ∈ [0, 1]
+                'intention_level': 'LOW' | 'MEDIUM' | 'HIGH'
+                'fired_rules'   : list of dicts sorted by firing_strength desc
+        """
+        self.eval()
+        device = next(self.parameters()).device
+        x_t = torch.FloatTensor(x_sample).unsqueeze(0).to(device)
+        fn = self.mf_layer.feature_names
+        mn = self.mf_layer.mf_names
+
+        with torch.no_grad():
+            pred = self(x_t).item()
+            mu = self.mf_layer(x_t)
+            rules = self.rule_indices.to(device)
+
+            w = torch.ones(1, self.num_rules, device=device)
+            for i in range(self.in_features):
+                w *= mu[:, i, :][:, rules[:, i]]
+            w_bar = (w / (w.sum(dim=1, keepdim=True) + 1e-10)).squeeze(0)
+
+            x_aug = torch.cat([x_t, torch.ones(1, 1, device=device)], dim=1)
+            f_k = torch.matmul(x_aug, self.consequent_weights.T).squeeze(0)
+
+        level = 'LOW' if pred < 0.33 else ('MEDIUM' if pred < 0.67 else 'HIGH')
+
+        fired = []
+        for k in range(self.num_rules):
+            fs = w_bar[k].item()
+            if fs > threshold:
+                ante = ' AND '.join(f'{fn[i]} is {mn[rules[k,i].item()]}'
+                                     for i in range(self.in_features))
+                cv = torch.sigmoid(f_k[k]).item()
+                clv = 'LOW' if cv < 0.33 else ('MEDIUM' if cv < 0.67 else 'HIGH')
+                fired.append({
+                    'rule_id': k, 'firing_strength': fs,
+                    'rule': f'IF {ante} THEN crossing intention is {clv}',
+                    'consequent_value': cv, 'consequent_linguistic': clv,
+                })
+
+        fired.sort(key=lambda r: r['firing_strength'], reverse=True)
+        return {'probability': pred, 'intention_level': level, 'fired_rules': fired}
