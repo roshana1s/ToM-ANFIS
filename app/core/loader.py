@@ -5,6 +5,18 @@ from typing import Optional
 from app.config import settings
 from app.core.anfis import ANFIS
 
+FEATURE_NAMES = [
+    "B1_age_vulnerability_awareness",
+    "B2_intersection_complexity",
+    "B3_pedestrian_position_proximity",
+    "B4_vehicle_density",
+    "G2_urgency_rushing",
+    "A1_vehicle_awareness",
+    "A2_traffic_signal_awareness",
+    "C1_relative_vehicle_speed",
+    "C2_occlusion_factor",
+]
+
 
 class ModelLoader:
     """
@@ -24,11 +36,17 @@ class ModelLoader:
         """
         try:
             # Load the ANFIS model architecture and weights
-            checkpoint = torch.load(settings.MODEL_PATH, map_location='cpu')
+            checkpoint = torch.load(settings.MODEL_PATH, map_location="cpu")
+            feature_names = checkpoint.get("feature_names") or FEATURE_NAMES
+
+            if len(feature_names) != 9:
+                raise RuntimeError(
+                    f"Invalid feature_names in checkpoint: expected 9 names, got {len(feature_names)}"
+                )
 
             # Instantiate the ANFIS model with 9 inputs (3 membership functions each = 3^9 = 19,683 rules)
-            self._model = ANFIS(in_features=9, num_mfs=3)
-            self._model.load_state_dict(checkpoint['model_state_dict'])
+            self._model = ANFIS(in_features=9, num_mfs=3, feature_names=feature_names)
+            self._model.load_state_dict(checkpoint["model_state_dict"])
             self._model.eval()  # Set to evaluation mode
 
             print(f"Model loaded from {settings.MODEL_PATH}")
