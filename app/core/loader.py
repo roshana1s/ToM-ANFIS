@@ -26,8 +26,8 @@ class ModelLoader:
             # Load the ANFIS model architecture and weights
             checkpoint = torch.load(settings.MODEL_PATH, map_location='cpu')
 
-            # Instantiate the ANFIS model with 9 inputs and 19,683 rules
-            self._model = ANFIS(in_features=9, num_rules=27)
+            # Instantiate the ANFIS model with 9 inputs (3 membership functions each = 3^9 = 19,683 rules)
+            self._model = ANFIS(in_features=9, num_mfs=3)
             self._model.load_state_dict(checkpoint['model_state_dict'])
             self._model.eval()  # Set to evaluation mode
 

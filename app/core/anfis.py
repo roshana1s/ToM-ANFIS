@@ -1,3 +1,8 @@
+import torch
+import torch.nn as nn
+import itertools
+
+
 class GaussianMF(nn.Module):
     """
     Layer 1 — Fuzzification via learnable Gaussian membership functions.

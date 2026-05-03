@@ -1,3 +1,8 @@
+from typing import Dict, List, Optional
+import numpy as np
+import pandas as pd
+
+
 class ToMFeatureExtractor:
     """
     Extract 10 Theory of Mind (ToM) cognitive features from the PIE database.
