@@ -3,7 +3,7 @@ Prediction routes for the ToM-ANFIS API.
 
 Two endpoints:
   1. POST /from-annotations - accepts raw PIE annotations
-  2. POST /from-features - accepts pre-extracted ToM features
+  2. POST /from-tom-features - accepts pre-extracted ToM features
 """
 
 from fastapi import APIRouter, HTTPException
@@ -22,7 +22,7 @@ router = APIRouter()
     response_model=PredictionResponse,
     summary="Predict from raw PIE annotations",
     description=(
-        "Accept raw pedestrian annotations from the PIE dataset, "
+        "Accept raw pedestrian annotations from raw annotations, "
         "extract ToM features, and return crossing intention prediction."
     ),
 )
@@ -52,18 +52,14 @@ async def predict_from_annotations(payload: RawAnnotationInput) -> PredictionRes
 
     except ValueError as e:
         raise HTTPException(
-            status_code=422,
-            detail=f"Invalid annotation payload: {str(e)}"
+            status_code=422, detail=f"Invalid annotation payload: {str(e)}"
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 
 @router.post(
-    "/from-features",
+    "/from-tom-features",
     response_model=PredictionResponse,
     summary="Predict from pre-extracted ToM features",
     description=(
@@ -89,12 +85,6 @@ async def predict_from_features(payload: ToMFeaturesInput) -> PredictionResponse
         return run_prediction(payload)
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid feature values: {str(e)}"
-        )
+        raise HTTPException(status_code=422, detail=f"Invalid feature values: {str(e)}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
